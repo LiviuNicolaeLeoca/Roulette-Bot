@@ -10,6 +10,10 @@ superbet_password = os.getenv("SUPERBET_PASSWORD")
 
 fibonacci_length = 6
 bet_amount=0.5
+third_dozen='3rd12'
+first_dozen='1st12'
+second_dozen='2nd12'
+
 def fibonacci_sequence(length):
     fib = [1, 1]
     while len(fib) < length:
@@ -43,7 +47,7 @@ def check_bet(page):
 
 
 def place_bet_FibonacciDozen(page, fib_sequence):
-    bet_button = page.frame_locator("#app iframe").frame_locator("iframe").locator("[data-bet-spot-id='3rd12']")
+    bet_button = page.frame_locator("#app iframe").frame_locator("iframe").locator("[data-bet-spot-id=third_dozen]")
     try:
         for i in range(fib_sequence):
             page.wait_for_timeout(100)
@@ -98,7 +102,6 @@ def place_bet_Fib_Dozen(page,prev_sold,prev_last_numbers,fib_sequence):
 
                     print("\n-----------------------------------------------------------------------\n")
                 
-                    page.wait_for_timeout(1000)
                     last_number = int(extract_last_numbers(page)[0])
                     if last_number or last_number == 0:
                         last_number = int(extract_last_numbers(page)[0])
@@ -126,7 +129,7 @@ def place_bet_Fib_Dozen(page,prev_sold,prev_last_numbers,fib_sequence):
                         #fib_sequence = fibonacci_sequence(fibonacci_length)
                         print("Out of Fibonacci sequence numbers. Exiting.")
                         break 
-
+                    page.wait_for_timeout(1000)
                     place_bet_FibonacciDozen(page, fib_sequence[0])
                     print(f"Fibonacci sequence: {fib_sequence}")
                     
@@ -149,11 +152,8 @@ def place_bet_Fib_Dozen(page,prev_sold,prev_last_numbers,fib_sequence):
 
 
 def run(playwright: Playwright) -> None:
-
-    log_file_path = "console_logs.txt"
-    with open(log_file_path, "w") as log_file:
         start_time=datetime.datetime.now()
-        log_file.write(f"\nRun started at {start_time}.\n")
+        print(f"\nRun started at {start_time}.\n")
         fib_sequence = fibonacci_sequence(fibonacci_length)
         browser = playwright.chromium.launch(headless=False)
         context = browser.new_context()
@@ -177,19 +177,15 @@ def run(playwright: Playwright) -> None:
         initial_last_numbers = extract_last_numbers(page)
         prev_last_numbers = initial_last_numbers
         print("Initial Last Numbers:", initial_last_numbers)
-        log_file.write("Initial Last Numbers: " + str(initial_last_numbers) + "\n")
         initial_sold = check_balance(page)
         print("Initial Sold:", initial_sold)
-        log_file.write("Initial Sold: " + str(initial_sold) + "\n")
         print("Fibonacci Sequence:", fib_sequence)
-        log_file.write("Fibonacci Sequence: " + str(fib_sequence) + "\n")
         place_bet_FibonacciDozen(page, fib_sequence[0])
 
         initial_bet = check_bet(page)
         desired_bet=fib_sequence[0]*bet_amount
         initial_bet=correct_bet(page, desired_bet)
         print("Initial Bet:", initial_bet)
-        log_file.write("Initial Bet: " + str(initial_bet) + "\n")
         prev_sold = initial_sold
 
         place_bet_Fib_Dozen(page,prev_sold,prev_last_numbers,fib_sequence)
@@ -197,7 +193,6 @@ def run(playwright: Playwright) -> None:
         context.close()
         browser.close()  
         end_time=datetime.datetime.now()
-        log_file.write(f"\nRun ended at {end_time}.\n")
 
 with sync_playwright() as playwright:
     run(playwright)

@@ -1,6 +1,0 @@
-
-Run started at 2024-04-23 13:22:41.650920.
-Initial Last Numbers: ['0', '25', '12', '2', '13', '1', '28', '19', '29', '36', '27', '0', '29']
-Initial Sold: 3.0
-Fibonacci Sequence: [1, 1, 2, 3, 5, 8]
-Initial Bet: 0.5
