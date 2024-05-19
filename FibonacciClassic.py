@@ -8,11 +8,9 @@ load_dotenv()
 superbet_username = os.getenv("SUPERBET_USERNAME")
 superbet_password = os.getenv("SUPERBET_PASSWORD")
 
-fibonacci_length = 6
+fibonacci_length=6
 bet_amount=0.5
-third_dozen='3rd12'
-first_dozen='1st12'
-second_dozen='2nd12'
+target_dozen="2nd12"
 
 def fibonacci_sequence(length):
     fib = [1, 1]
@@ -46,39 +44,48 @@ def check_bet(page):
     return bet
 
 
-def place_bet_FibonacciDozen(page, fib_sequence):
-    bet_button = page.frame_locator("#app iframe").frame_locator("iframe").locator("[data-bet-spot-id=third_dozen]")
-    try:
-        for i in range(fib_sequence):
-            page.wait_for_timeout(100)
-            bet_button.evaluate('(element) => { \
-            const rect = element.getBoundingClientRect(); \
-            const offsetX = -15; \
-            const offsetY = 0; \
-            const clickEvent = new MouseEvent("click", { \
-                bubbles: true, \
-                cancelable: true, \
-                clientX: rect.left + offsetX, \
-                clientY: rect.top + offsetY \
-            }); \
-            element.dispatchEvent(clickEvent); \
-        }')
-    except Exception as e:
-        print(f"Error placing bet: {e}")
+def place_bet_FibonacciDozen(page, fib_sequence, target_dozen):
+    dozen = None
+    if target_dozen == "1st12":
+        dozen = page.frame_locator("#app iframe").frame_locator("iframe").locator("[data-bet-spot-id='1st12']")
+    elif target_dozen == "2nd12":
+        dozen = page.frame_locator("#app iframe").frame_locator("iframe").locator("[data-bet-spot-id='2nd12']")
+    elif target_dozen == "3rd12":
+        dozen = page.frame_locator("#app iframe").frame_locator("iframe").locator("[data-bet-spot-id='3rd12']")
+
+    if dozen:
+        bet_button = dozen
+        try:
+            for i in range(fib_sequence):
+                page.wait_for_timeout(100)
+                bet_button.evaluate('(element) => { \
+                const rect = element.getBoundingClientRect(); \
+                const offsetX = -15; \
+                const offsetY = 0; \
+                const clickEvent = new MouseEvent("click", { \
+                    bubbles: true, \
+                    cancelable: true, \
+                    clientX: rect.left + offsetX, \
+                    clientY: rect.top + offsetY \
+                }); \
+                element.dispatchEvent(clickEvent); \
+                }')
+            
+        except Exception as e:
+            print(f"Error placing bet: {e}")
 
 
         
 def correct_bet(page, desired_bet):
     current_bet = check_bet(page)
     
-    if current_bet != desired_bet:
+    if current_bet > desired_bet:
         click_count = math.ceil(desired_bet / current_bet)
         
         for i in range(click_count):
             page.frame_locator("#app iframe").frame_locator("iframe").locator(".button--9c577").first.click()
         
         bet = check_bet(page)
-        #page.frame_locator("#app iframe").frame_locator("iframe").get_by_text("ANULARE").click()
         if bet == desired_bet:
             print(f"Bet corrected from {current_bet} to {bet}.")
             return bet
@@ -86,6 +93,34 @@ def correct_bet(page, desired_bet):
             correct_bet(page, desired_bet)
     else:
         return current_bet
+
+def analyze_bet_outcome(last_numbers, fib_sequence, target_dozen):
+    outcome = ""
+    if not last_numbers:
+        return "unknown"
+
+    last_number = int(last_numbers[0])
+    if last_number < 0 or last_number > 36:
+        return "unknown"
+
+    if last_number in range(1, 13):
+        outcome = "1st12"
+    elif last_number in range(12, 25):
+        outcome = "2nd12"
+    elif last_number in range(24, 37):
+        outcome = "3rd12"
+    elif last_number == 0:
+        outcome = "zero"
+
+    if outcome == target_dozen:
+        print(outcome)
+        fib_sequence = fibonacci_sequence(fibonacci_length)
+        print("Winning!")
+    else:
+        print(outcome)
+        fib_sequence.pop(0)
+        print("Losing!")
+    return fib_sequence
 
 def place_bet_Fib_Dozen(page,prev_sold,prev_last_numbers,fib_sequence):
     while True:
@@ -101,36 +136,16 @@ def place_bet_Fib_Dozen(page,prev_sold,prev_last_numbers,fib_sequence):
                     sold = check_balance(page)
 
                     print("\n-----------------------------------------------------------------------\n")
-                
-                    last_number = int(extract_last_numbers(page)[0])
-                    if last_number or last_number == 0:
-                        last_number = int(extract_last_numbers(page)[0])
-                        if last_number < 25 or last_number > 36:
-                            print(f"Last number is {last_number}, indicating a losing bet.")
-                            fib_sequence.pop(0)
-                                
-                        elif 25 <= last_number <= 36:
-                            fib_sequence = fibonacci_sequence(fibonacci_length)
-                            print(f"Last number is {last_number}, indicating a winning bet. Resetting sequence.")
-                            
-                    elif last_number == None:
-                        print("No last numbers found.")
-                        if sold<prev_sold:
-                            print("Sold balance is less than previous sold balance.")
-                            fib_sequence.pop(0)
-                        elif sold > prev_sold:
-                            print("Sold balance is higher than previous sold balance. Resetting sequence.")
-                            fib_sequence = fibonacci_sequence(fibonacci_length)
-                    else:
-                        print("Nothing found!!!!")
-                        break
+
+                    fib_sequence=analyze_bet_outcome(current_last_numbers,fib_sequence,target_dozen)
 
                     if len(fib_sequence) == 0:
                         #fib_sequence = fibonacci_sequence(fibonacci_length)
                         print("Out of Fibonacci sequence numbers. Exiting.")
                         break 
+
                     page.wait_for_timeout(1000)
-                    place_bet_FibonacciDozen(page, fib_sequence[0])
+                    place_bet_FibonacciDozen(page, fib_sequence[0],target_dozen)
                     print(f"Fibonacci sequence: {fib_sequence}")
                     
                     print("Sold:", sold)
@@ -143,7 +158,12 @@ def place_bet_Fib_Dozen(page,prev_sold,prev_last_numbers,fib_sequence):
                     last_number = int(last_numbers[0])
                     print("Last Numbers:", extract_last_numbers(page))
 
-                    if sold >= 71.5 or sold == 0 :
+                    # max=12
+                    # if(fibonacci_length<=max):
+                    #     if(sold>sum(fib_sequence(fibonacci_length+1))*bet_amount):
+                    #         fibonacci_length += 1
+                    
+                    if sold >= 143.0 or sold == 0 :
                         print("Desired sum acquired or sold balance is lower than 30.5. Exiting.\n")
                         break
 
@@ -155,7 +175,7 @@ def run(playwright: Playwright) -> None:
         start_time=datetime.datetime.now()
         print(f"\nRun started at {start_time}.\n")
         fib_sequence = fibonacci_sequence(fibonacci_length)
-        browser = playwright.chromium.launch(headless=False)
+        browser = playwright.chromium.launch(headless=True)
         context = browser.new_context()
         page = context.new_page()
         page.goto("https://www.google.com/search?q=superbet&oq=superbet&gs_lcrp=EgZjaHJvbWUyBggAEEUYOdIBCDE0MjNqMGoyqAIAsAIB&sourceid=chrome&ie=UTF-8")
@@ -180,7 +200,7 @@ def run(playwright: Playwright) -> None:
         initial_sold = check_balance(page)
         print("Initial Sold:", initial_sold)
         print("Fibonacci Sequence:", fib_sequence)
-        place_bet_FibonacciDozen(page, fib_sequence[0])
+        place_bet_FibonacciDozen(page, fib_sequence[0],target_dozen)
 
         initial_bet = check_bet(page)
         desired_bet=fib_sequence[0]*bet_amount
@@ -193,6 +213,7 @@ def run(playwright: Playwright) -> None:
         context.close()
         browser.close()  
         end_time=datetime.datetime.now()
+        print(f"\nRun ended at {end_time}.\n")
 
 with sync_playwright() as playwright:
     run(playwright)
