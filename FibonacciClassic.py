@@ -8,7 +8,7 @@ load_dotenv()
 superbet_username = os.getenv("SUPERBET_USERNAME")
 superbet_password = os.getenv("SUPERBET_PASSWORD")
 
-fibonacci_length=6
+fibonacci_length=5
 bet_amount=0.5
 target_dozen="2nd12"
 
@@ -17,7 +17,6 @@ def fibonacci_sequence(length):
     while len(fib) < length:
         fib.append(fib[-1] + fib[-2])
     return fib
-
 
 def extract_last_numbers(page):
     recent_numbers_container = page.frame_locator("#app iframe").frame_locator("iframe").locator(".recentNumbers--9cf87")
@@ -74,8 +73,6 @@ def place_bet_FibonacciDozen(page, fib_sequence, target_dozen):
         except Exception as e:
             print(f"Error placing bet: {e}")
 
-
-        
 def correct_bet(page, desired_bet):
     current_bet = check_bet(page)
     
@@ -103,7 +100,7 @@ def analyze_bet_outcome(last_numbers, fib_sequence, target_dozen):
     if last_number < 0 or last_number > 36:
         return "unknown"
 
-    if last_number in range(1, 13):
+    if last_number in range(0, 13):
         outcome = "1st12"
     elif last_number in range(12, 25):
         outcome = "2nd12"
@@ -133,8 +130,6 @@ def place_bet_Fib_Dozen(page,prev_sold,prev_last_numbers,fib_sequence):
                     page.wait_for_selector("svg",timeout=5*60*1000)
                     page.frame_locator("#app iframe").frame_locator("iframe").locator("svg").filter(has_text="0,50").locator("circle").nth(1).first.click()
 
-                    sold = check_balance(page)
-
                     print("\n-----------------------------------------------------------------------\n")
 
                     fib_sequence=analyze_bet_outcome(current_last_numbers,fib_sequence,target_dozen)
@@ -147,15 +142,15 @@ def place_bet_Fib_Dozen(page,prev_sold,prev_last_numbers,fib_sequence):
                     page.wait_for_timeout(1000)
                     place_bet_FibonacciDozen(page, fib_sequence[0],target_dozen)
                     print(f"Fibonacci sequence: {fib_sequence}")
-                    
-                    print("Sold:", sold)
+
                     bet=check_bet(page)
                     desired_bet=fib_sequence[0] * bet_amount
                     bet=correct_bet(page, desired_bet)
+                    sold = check_balance(page)
 
+                    print("Sold:", sold)
                     print("Bet:", bet)
-                    last_numbers=extract_last_numbers(page)
-                    last_number = int(last_numbers[0])
+
                     print("Last Numbers:", extract_last_numbers(page))
 
                     # max=12
@@ -170,14 +165,7 @@ def place_bet_Fib_Dozen(page,prev_sold,prev_last_numbers,fib_sequence):
                 prev_sold = sold
                 prev_last_numbers = current_last_numbers
 
-
-def run(playwright: Playwright) -> None:
-        start_time=datetime.datetime.now()
-        print(f"\nRun started at {start_time}.\n")
-        fib_sequence = fibonacci_sequence(fibonacci_length)
-        browser = playwright.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
+def open_superbet(page):
         page.goto("https://www.google.com/search?q=superbet&oq=superbet&gs_lcrp=EgZjaHJvbWUyBggAEEUYOdIBCDE0MjNqMGoyqAIAsAIB&sourceid=chrome&ie=UTF-8")
         page.get_by_role("button", name="Acceptă tot").click()
         page.get_by_role("link", name="Superbet: Pariuri Sportive").click()
@@ -194,14 +182,25 @@ def run(playwright: Playwright) -> None:
         page.wait_for_selector("svg",timeout=60*1000)
         page.frame_locator("#app iframe").frame_locator("iframe").locator("svg").filter(has_text="0,50").locator("circle").nth(1).first.click()
 
+
+def run(playwright: Playwright) -> None:
+        start_time=datetime.datetime.now()
+        print(f"\nRun started at {start_time}.\n")
+        fib_sequence = fibonacci_sequence(fibonacci_length)
+        browser = playwright.chromium.launch(headless=True)
+        context = browser.new_context()
+        page = context.new_page()
+        
+        open_superbet(page)
+
         initial_last_numbers = extract_last_numbers(page)
         prev_last_numbers = initial_last_numbers
         print("Initial Last Numbers:", initial_last_numbers)
+
+        place_bet_FibonacciDozen(page, fib_sequence[0],target_dozen)
         initial_sold = check_balance(page)
         print("Initial Sold:", initial_sold)
         print("Fibonacci Sequence:", fib_sequence)
-        place_bet_FibonacciDozen(page, fib_sequence[0],target_dozen)
-
         initial_bet = check_bet(page)
         desired_bet=fib_sequence[0]*bet_amount
         initial_bet=correct_bet(page, desired_bet)
