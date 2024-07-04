@@ -9,9 +9,9 @@ load_dotenv()
 superbet_username = os.getenv("SUPERBET_USERNAME")
 superbet_password = os.getenv("SUPERBET_PASSWORD")
 
-fibonacci_length = 6
+fibonacci_length = 8
 bet_amount = 0.5
-reset_count=1
+reset_count=2
 target_dozen=""
 
 def open_superbet(page):
@@ -27,13 +27,15 @@ def open_superbet(page):
     page.locator("input[type=\"password\"]").press("Enter")
     page.get_by_role("link", name="casino live").click()
     page.get_by_role("heading", name="Superbet Roulette").click()
+    
+    if page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").get_by_role("button", name="COMUTAȚI ÎNAPOI") :
+        page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").get_by_role("button", name="COMUTAȚI ÎNAPOI").click()
+        
+    page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").locator('[data-role="statistics-button"]').click()
 
-    frame_locator = page.frame_locator("#app iframe").frame_locator("iframe")
-    frame_locator.locator('[data-role="statistics-button"]').first.click()
+    page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").get_by_role("button", name="ULTIMELE").click()
 
-    frame_locator.locator('[data-label="ULTIMELE 500"]').first.click()
-
-    page.frame_locator("#app iframe").frame_locator("iframe").locator("svg").filter(has_text="0,50").locator("circle").nth(1).first.click()
+    page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").locator("svg").filter(has_text="0,50").locator("circle").nth(1).first.click()
 
 def fibonacci_sequence(length):
     fib = [1, 1]
@@ -42,7 +44,7 @@ def fibonacci_sequence(length):
     return fib
 
 def extract_last_numbers(page):
-    recent_numbers_container = page.frame_locator("#app iframe").frame_locator("iframe").locator(".recentNumbers--9cf87")
+    recent_numbers_container = page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").locator(".recentNumbers--9cf87")
     
 
     if recent_numbers_container:
@@ -53,19 +55,19 @@ def extract_last_numbers(page):
         return None
 
 def check_balance(page):
-    sold_element = page.frame_locator("#app iframe").frame_locator("iframe").locator(".balance--46800").inner_text()
+    sold_element = page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").locator(".balance--46800").inner_text()
     sold_float = re.search(r'\b\d+(?:[.,]\d+)?\b', sold_element)
     sold = float(sold_float.group().replace(',', '.')) if sold_float else "Sold not found"
     return sold
 
 def check_bet(page):
-    bet_element = page.frame_locator("#app iframe").frame_locator("iframe").locator(".totalBet--e866e").inner_text()
+    bet_element = page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").locator(".totalBet--e866e").inner_text()
     bet_float = re.search(r'\b\d+(?:[.,]\d+)?\b', bet_element)
     bet = float(bet_float.group().replace(',', '.')) if bet_float else "Bet not found"
     return bet
 
 def place_bet_FibonacciDozen(page, fib_sequence, target_dozen):
-    dozen_locator = page.frame_locator("#app iframe").frame_locator("iframe").locator(f"[data-bet-spot-id='{target_dozen}']")
+    dozen_locator = page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").locator(f"[data-bet-spot-id='{target_dozen}']")
     if dozen_locator:
         bet_button = dozen_locator
         try:
@@ -91,7 +93,7 @@ def correct_bet(page, desired_bet):
     if current_bet > desired_bet:
         click_count = math.ceil(desired_bet / current_bet)
         for _ in range(click_count):
-            page.frame_locator("#app iframe").frame_locator("iframe").locator(".button--9c577").first.click()
+            page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").locator(".button--9c577").first.click()
         bet = check_bet(page)
         if bet == desired_bet:
             print(f"Bet corrected from {current_bet} to {bet}.")
@@ -129,7 +131,6 @@ def analyze_bet_outcome(last_numbers, fib_sequence, target_dozen,page):
     return fib_sequence, target_dozen
 
 def place_bet_Fib_Dozen(page, prev_sold, prev_last_numbers, fib_sequence, target_dozen):
-    reset_count=0
     while True:
         sold = 0.0
         page.wait_for_timeout(1000)
@@ -139,7 +140,7 @@ def place_bet_Fib_Dozen(page, prev_sold, prev_last_numbers, fib_sequence, target
         if current_balance != prev_sold and current_last_numbers[:6] != prev_last_numbers[:6]:
             try:
                 page.wait_for_selector("svg")
-                page.frame_locator("#app iframe").frame_locator("iframe").locator("svg").filter(has_text="0,50").locator("circle").nth(1).first.click()
+                page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe").locator("svg").filter(has_text="0,50").locator("circle").nth(1).first.click()
             except TimeoutError:
                 print("TimeoutError")
             
@@ -147,11 +148,11 @@ def place_bet_Fib_Dozen(page, prev_sold, prev_last_numbers, fib_sequence, target
             fib_sequence, target_dozen = analyze_bet_outcome(current_last_numbers, fib_sequence, current_dozen, page)
 
             if len(fib_sequence) == 0:
-                if(reset_count>2):
-                    break
-                page.wait_for_timeout(10*60*1000)
-                print("Out of Fibonacci sequence numbers.")
-                reset_count+=1
+                # if(reset_count>2):
+                #     break
+                # page.wait_for_timeout(10*60*1000)
+                # print("Out of Fibonacci sequence numbers.")
+                # reset_count+=1
                 break
     
             page.wait_for_timeout(1000)
@@ -204,11 +205,10 @@ def find_last_dozen(last_numbers, page):
     return None
 
 def getLast100Numbers(page):
-    frame_locator = page.frame_locator("#app iframe").frame_locator("iframe")
+    frame_locator = page.frame_locator("#app iframe").frame_locator("iframe[name=\"Gaming Wrapper\"]").frame_locator("iframe")
     number_elements_locator = frame_locator.locator('.contentElement--e8ecb > .numbers--2435c > div > .single-number--43778 > .value--877c6')
     
-    # Extract numbers from the current frame if last numbers are not available
-    page.frame_locator("#app iframe").frame_locator("iframe").locator('.contentElement--e8ecb > .numbers--2435c > div > .single-number--43778 > .value--877c6').first.wait_for()
+    frame_locator.locator('.contentElement--e8ecb > .numbers--2435c > div > .single-number--43778 > .value--877c6').first.wait_for()
     numbers = extract_last_numbers(page)+[element.text_content() for element in number_elements_locator.all()]
 
     return numbers[13:]
@@ -229,7 +229,7 @@ def run(playwright: Playwright) -> None:
     start_time=datetime.datetime.now()
     print(f"\nRun started at {start_time}.\n")
     fib_sequence = fibonacci_sequence(fibonacci_length)
-    browser = playwright.chromium.launch(headless=False)
+    browser = playwright.chromium.launch(headless=True)
     context = browser.new_context()
     page = context.new_page()
     
