@@ -1,3 +1,4 @@
 node_modules/
 .env
 console_logs.txt
+test.py
